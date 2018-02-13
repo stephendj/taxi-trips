@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>  
+<head>
+    <title>GridLayer Test</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.1/dist/leaflet.css" />
+    <style>
+        body {
+            padding: 0;
+            margin: 0;
+        }
+        html, body, #map {
+            height: 100%;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.0.1/dist/leaflet.js"></script>
+    <script src="{{ url_for('static', filename='js/jquery-3.2.1.min.js') }}"></script>
+
+    <script>
+        const SIZE_IN_METER = {{ size }};
+        const LAT_LONG_DEGREE = SIZE_IN_METER / 100000;
+        const API_URL = 'http://127.0.0.1:5000';
+        const UPPER_LEFT_LAT = -6.839
+        const UPPER_LEFT_LONG = 107.547
+        const BOTTOM_RIGHT_LAT = -6.967
+        const BOTTOM_RIGHT_LONG = 107.738
+        const CITY_CENTER_LAT_LONG = [-6.9175, 107.6191];
+        const ZOOM_LEVEL = 13;
+
+        $(document).ready(function () {
+            var map = new L.Map('map', { center: CITY_CENTER_LAT_LONG, zoom: ZOOM_LEVEL });
+            L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+               attribution: 'Map data &copy; <a href="http://www.osm.org">OpenStreetMap</a>'
+            }).addTo(map)
+
+            $.get({
+                url: '/predict-start-finish?size=' + SIZE_IN_METER,
+                success: function (trips) {
+                    trips.forEach(function (trip) {
+                        console.log(trip)
+                        trip['route_zones'].forEach(function (zone, index, array) {
+                            var x = ((-1 * Number(zone.split('|')[0])) * LAT_LONG_DEGREE + UPPER_LEFT_LAT) + LAT_LONG_DEGREE / 2;
+                            var y = (Number(zone.split('|')[1]) * LAT_LONG_DEGREE + UPPER_LEFT_LONG) - LAT_LONG_DEGREE / 2;
+
+                            var upperLeftBound = [x, y];
+                            var bottomRightBound = [x - LAT_LONG_DEGREE, y + LAT_LONG_DEGREE];
+
+                            var bounds = [upperLeftBound, bottomRightBound];
+                            var rect;
+                            if (index == 0) {
+                                rect = L.rectangle(bounds, {color: 'red', weight: 1});
+                            } else if (index == array.length - 1) {
+                                rect = L.rectangle(bounds, {color: 'green', weight: 1});
+                            } else {
+                                rect = L.rectangle(bounds, {color: 'blue', weight: 1});
+                            }
+
+                            rect.addTo(map);
+                            // rect.bindTooltip(index.toString(), {
+                            //     permanent: true, direction: 'center'
+                            // }).openTooltip();
+                        });
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
