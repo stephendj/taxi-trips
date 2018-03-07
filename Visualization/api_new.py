@@ -20,6 +20,7 @@ import decimal
 import pickle
 import math
 from operator import itemgetter
+import itertools
 
 ### Initialization
 app = Flask(__name__)
@@ -149,13 +150,14 @@ def predict_pickups():
 @cross_origin()
 def predict_dropoffs():
     pickup_zones = request.args.get('pickup_zones').split(',')
+    start_date = string_to_date(str(request.args.get('date')))
+    start_day = day_name_to_day_of_week(start_date.strftime('%A'))
+    start_hour = int(request.args.get('hour'))
     results = []
+
     for pickup_zone in pickup_zones:
         mapper = load_nb_mapper(pickup_zone)
         model = load_nb_model(pickup_zone)
-        start_date = string_to_date(str(request.args.get('date')))
-        start_day = day_name_to_day_of_week(start_date.strftime('%A'))
-        start_hour = int(request.args.get('hour'))
 
         result = model.predict([[start_day, start_hour]])
         results.append(list(mapper.keys())[list(mapper.values()).index(result[0])])
@@ -167,6 +169,9 @@ def predict_dropoffs():
 def predict_routes():
     pickup_zones = request.args.get('pickup_zones').split(',')
     dropoff_zones = request.args.get('dropoff_zones').split(',')
+
+    pickup_zones = request.args.get('pickup_zones').split(',')
+    dropoff_zones = request.args.get('dropoff_zones').split(',')
     all_routes = []
 
     for index, pickup_zone in enumerate(pickup_zones):
@@ -174,6 +179,62 @@ def predict_routes():
         all_routes.append(routes[0]['route_zones'])
 
     return jsonify(all_routes)
+    # date = string_to_date(str(request.args.get('date')))
+    # day = day_name_to_day_of_week(date.strftime('%A'))
+    # hour = int(request.args.get('hour'))
+    # all_routes = []
+
+    # for index, pickup_zone in enumerate(pickup_zones):
+    #     current_zone = pickup_zone
+    #     possible_routes = [current_zone]
+    #     print(pickup_zone)
+    #     print(dropoff_zones[index])
+
+    #     while (current_zone != dropoff_zones[index]):
+    #         transfer_probabilities = mongo.db['transfer_probabilities_' + str(request.args.get('size'))].find_one({'start_zone': current_zone, 'destination_zone': dropoff_zones[index]})
+    #         if (transfer_probabilities == None):
+    #             print('none')
+    #             break
+    #         neighbor_transfers = transfer_probabilities['neighbor_transfers']
+    #         possible_transfers = list(filter(lambda transfer: transfer['hour'] == hour and transfer['day'] == day, neighbor_transfers))
+    #         if (len(possible_transfers) == 0):
+    #             grouped_possible_transfers = [{
+    #                 'neighbor_zone': key,
+    #                 'count': sum(int(item['count']) for item in group)
+    #             } for key, group in itertools.groupby(neighbor_transfers, key = lambda x: x['neighbor_zone'])]
+    #             sorted_possible_transfer = sorted(grouped_possible_transfers, key = itemgetter('count'), reverse = True)
+
+    #             if (len(possible_routes) > 2 and sorted_possible_transfer[0] == possible_routes[-2]):
+    #                 possible_routes.append(sorted_possible_transfer[1]['neighbor_zone'])
+    #                 current_zone = sorted_possible_transfer[1]['neighbor_zone']
+    #             else:
+    #                 possible_routes.append(sorted_possible_transfer[0]['neighbor_zone'])
+    #                 current_zone = sorted_possible_transfer[0]['neighbor_zone']
+    #         elif (len(possible_transfers) == 1):
+    #             possible_routes.append(possible_transfers[0]['neighbor_zone'])
+    #             current_zone = possible_transfers[0]['neighbor_zone']
+    #         else:
+    #             grouped_possible_transfers = [{
+    #                 'neighbor_zone': key,
+    #                 'count': sum(int(item['count']) for item in group)
+    #             } for key, group in itertools.groupby(possible_transfers, key = lambda x: x['neighbor_zone'])]
+    #             sorted_possible_transfer = sorted(grouped_possible_transfers, key = itemgetter('count'), reverse = True)
+
+    #             i = 0
+    #             while(i < len(sorted_possible_transfer) and sorted_possible_transfer[i] in possible_routes):
+    #                 i += 1
+
+    #             possible_routes.append(sorted_possible_transfer[i]['neighbor_zone'])
+    #             current_zone = sorted_possible_transfer[i]['neighbor_zone']
+    #             print(current_zone)
+
+    #     print(possible_routes)
+    #     print()
+    #     print()
+    #     all_routes.append(possible_routes)
+
+
+    # return jsonify(all_routes)
 
 if __name__ == '__main__':
     app.run(debug = True)
