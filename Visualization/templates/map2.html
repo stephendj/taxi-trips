@@ -83,8 +83,9 @@
                         $.get({
                             url: '/predict-pickups?size=' + SIZE_IN_METER + '&date=' + date + '&hour=' + hour + '&numTrip=' + numTrip,
                             success: function (pickup_counts) {
+                                console.log(pickup_counts);
                                 pickup_counts.forEach(function (pickup_count, index) {
-                                    var zone = pickup_count[0]
+                                    var zone = pickup_count['start_zone']
                                     var x = ((-1 * Number(zone.split('|')[0])) * LAT_LONG_DEGREE + UPPER_LEFT_LAT) + LAT_LONG_DEGREE / 2;
                                     var y = (Number(zone.split('|')[1]) * LAT_LONG_DEGREE + UPPER_LEFT_LONG) - LAT_LONG_DEGREE / 2;
 
@@ -95,81 +96,81 @@
                                     }).addTo(map);
                                 });
 
-                                pickup_zones = pickup_counts.map(function (elem) {
-                                    return elem[0];
-                                });
+                                // pickup_zones = pickup_counts.map(function (elem) {
+                                //     return elem[0];
+                                // });
 
-                                $.get({
-                                    url: '/predict-dropoffs?size=' + SIZE_IN_METER + '&date=' + date + '&hour=' + hour + '&pickup_zones=' + pickup_zones.join(','),
-                                    success: function (dropoff_zones) {
-                                        dropoff_zones.forEach(function (zone, index) {
-                                            var x = ((-1 * Number(zone.split('|')[0])) * LAT_LONG_DEGREE + UPPER_LEFT_LAT) + LAT_LONG_DEGREE / 2;
-                                            var y = (Number(zone.split('|')[1]) * LAT_LONG_DEGREE + UPPER_LEFT_LONG) - LAT_LONG_DEGREE / 2;
+                                // $.get({
+                                //     url: '/predict-dropoffs?size=' + SIZE_IN_METER + '&date=' + date + '&hour=' + hour + '&pickup_zones=' + pickup_zones.join(','),
+                                //     success: function (dropoff_zones) {
+                                //         dropoff_zones.forEach(function (zone, index) {
+                                //             var x = ((-1 * Number(zone.split('|')[0])) * LAT_LONG_DEGREE + UPPER_LEFT_LAT) + LAT_LONG_DEGREE / 2;
+                                //             var y = (Number(zone.split('|')[1]) * LAT_LONG_DEGREE + UPPER_LEFT_LONG) - LAT_LONG_DEGREE / 2;
 
-                                            var upperLeftBound = [x + LAT_LONG_DEGREE/2, y - LAT_LONG_DEGREE/2];
-                                            var bottomRightBound = [x - LAT_LONG_DEGREE/2, y + LAT_LONG_DEGREE/2];
+                                //             var upperLeftBound = [x + LAT_LONG_DEGREE/2, y - LAT_LONG_DEGREE/2];
+                                //             var bottomRightBound = [x - LAT_LONG_DEGREE/2, y + LAT_LONG_DEGREE/2];
 
-                                            var bounds = [upperLeftBound, bottomRightBound];
-                                            // var circle = L.circle([x, y], 75, {
-                                            //     color: colors[index],
-                                            //     opacity: 1
-                                            // }).addTo(map);
-                                            var rect = L.rectangle(bounds, {color: colors[index], weight: 1}).addTo(map);
-                                        });
+                                //             var bounds = [upperLeftBound, bottomRightBound];
+                                //             // var circle = L.circle([x, y], 75, {
+                                //             //     color: colors[index],
+                                //             //     opacity: 1
+                                //             // }).addTo(map);
+                                //             var rect = L.rectangle(bounds, {color: colors[index], weight: 1}).addTo(map);
+                                //         });
 
-                                        $.get({
-                                            url: '/predict-routes?size=' + SIZE_IN_METER + '&date=' + date + '&hour=' + hour + '&pickup_zones=' + pickup_zones.join(',') + '&dropoff_zones=' + dropoff_zones.join(','),
-                                            success: function (routes) {
-                                                var all_routes = {
-                                                    type: 'FeatureCollection',
-                                                    features: []
-                                                };
-                                                routes.forEach(function (route, index) {
-                                                    // all_routes.features[index] = {
-                                                    //     type: 'Feature',
-                                                    //     properties: {
-                                                    //         fill: colors[index]
-                                                    //     },
-                                                    //     geometry: {
-                                                    //         type: 'LineString',
-                                                    //         coordinates: []
-                                                    //     }
-                                                    // };
+                                //         $.get({
+                                //             url: '/predict-routes?size=' + SIZE_IN_METER + '&date=' + date + '&hour=' + hour + '&pickup_zones=' + pickup_zones.join(',') + '&dropoff_zones=' + dropoff_zones.join(','),
+                                //             success: function (routes) {
+                                //                 var all_routes = {
+                                //                     type: 'FeatureCollection',
+                                //                     features: []
+                                //                 };
+                                //                 routes.forEach(function (route, index) {
+                                //                     // all_routes.features[index] = {
+                                //                     //     type: 'Feature',
+                                //                     //     properties: {
+                                //                     //         fill: colors[index]
+                                //                     //     },
+                                //                     //     geometry: {
+                                //                     //         type: 'LineString',
+                                //                     //         coordinates: []
+                                //                     //     }
+                                //                     // };
 
-                                                    // x_start = ((-1 * Number(pickup_zones[index].split('|')[0])) * LAT_LONG_DEGREE + UPPER_LEFT_LAT) + LAT_LONG_DEGREE / 2;
-                                                    // y_start = (Number(pickup_zones[index].split('|')[1]) * LAT_LONG_DEGREE + UPPER_LEFT_LONG) - LAT_LONG_DEGREE / 2;
+                                //                     // x_start = ((-1 * Number(pickup_zones[index].split('|')[0])) * LAT_LONG_DEGREE + UPPER_LEFT_LAT) + LAT_LONG_DEGREE / 2;
+                                //                     // y_start = (Number(pickup_zones[index].split('|')[1]) * LAT_LONG_DEGREE + UPPER_LEFT_LONG) - LAT_LONG_DEGREE / 2;
 
-                                                    // all_routes.features[index].geometry.coordinates.push([y_start, x_start]);
+                                //                     // all_routes.features[index].geometry.coordinates.push([y_start, x_start]);
 
-                                                    convertedPoints = []
-                                                    route.forEach(function (zone) {
-                                                        var x = ((-1 * Number(zone.split('|')[0])) * LAT_LONG_DEGREE + UPPER_LEFT_LAT) + LAT_LONG_DEGREE / 2;
-                                                        var y = (Number(zone.split('|')[1]) * LAT_LONG_DEGREE + UPPER_LEFT_LONG) - LAT_LONG_DEGREE / 2;
+                                //                     convertedPoints = []
+                                //                     route.forEach(function (zone) {
+                                //                         var x = ((-1 * Number(zone.split('|')[0])) * LAT_LONG_DEGREE + UPPER_LEFT_LAT) + LAT_LONG_DEGREE / 2;
+                                //                         var y = (Number(zone.split('|')[1]) * LAT_LONG_DEGREE + UPPER_LEFT_LONG) - LAT_LONG_DEGREE / 2;
 
-                                                        convertedPoints.push([x, y]);
+                                //                         convertedPoints.push([x, y]);
                                                         
-                                                        // all_routes.features[index].geometry.coordinates.push([y, x]);
-                                                    });
+                                //                         // all_routes.features[index].geometry.coordinates.push([y, x]);
+                                //                     });
 
-                                                    var polyline = new L.Polyline(convertedPoints, {
-                                                      color: colors[index],
-                                                      weight: 5,
-                                                      opacity: 1
-                                                    }).addTo(map);
+                                //                     var polyline = new L.Polyline(convertedPoints, {
+                                //                       color: colors[index],
+                                //                       weight: 5,
+                                //                       opacity: 1
+                                //                     }).addTo(map);
 
-                                                    // x_end = ((-1 * Number(dropoff_zones[index].split('|')[0])) * LAT_LONG_DEGREE + UPPER_LEFT_LAT) + LAT_LONG_DEGREE / 2;
-                                                    // y_end = (Number(dropoff_zones[index].split('|')[1]) * LAT_LONG_DEGREE + UPPER_LEFT_LONG) - LAT_LONG_DEGREE / 2;
+                                //                     // x_end = ((-1 * Number(dropoff_zones[index].split('|')[0])) * LAT_LONG_DEGREE + UPPER_LEFT_LAT) + LAT_LONG_DEGREE / 2;
+                                //                     // y_end = (Number(dropoff_zones[index].split('|')[1]) * LAT_LONG_DEGREE + UPPER_LEFT_LONG) - LAT_LONG_DEGREE / 2;
 
-                                                    // all_routes.features[index].geometry.coordinates.push([y_end, x_end]);
-                                                });
+                                //                     // all_routes.features[index].geometry.coordinates.push([y_end, x_end]);
+                                //                 });
 
-                                                // all_routes.features.forEach(function (routes) {
-                                                //     console.log(JSON.stringify(routes))
-                                                // });
-                                            }
-                                        });
-                                    }
-                                });
+                                //                 // all_routes.features.forEach(function (routes) {
+                                //                 //     console.log(JSON.stringify(routes))
+                                //                 // });
+                                //             }
+                                //         });
+                                //     }
+                                // });
                             }
                         });
                     }

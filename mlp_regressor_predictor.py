@@ -19,7 +19,7 @@ def round_float(x):
     return int(round(x))
 
 def format_date(x, pos=None):
-    return dates.num2date(x).strftime('%Y-%m-%d %H:00, %A') #use FuncFormatter to format dates
+    return dates.num2date(x).strftime('%Y-%m-%d %H:00, %A')
 
 def string_to_date(x):
     return datetime.strptime(x, '%Y-%m-%d')
