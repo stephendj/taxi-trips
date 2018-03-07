@@ -47,14 +47,13 @@ if __name__ == '__main__':
     all_trips_df = pd.DataFrame(list(db['cleaned_trip_zones_' + str(size_in_meter)].find()))
     all_trips_df['start_hour'] = list(map(hour_interval_formatter, all_trips_df['start_hour']))
 
-    grouped_df = all_trips_df.groupby(['start_zone', 'start_day', 'start_hour', 'start_date']).size()
-    for index, row in grouped_df.iteritems():
-        db['pickup_counts_' + str(size_in_meter) + '_3'].insert({
-            'start_zone': index[0],
-            'start_day': day_name_to_day_of_week(index[1].split('_')[0]),
-            'zone_hour': index[0] + '_' + str(index[2]),
-            'zone_hour_day': index[0] + '_' + str(index[2]) + '_' + str(day_name_to_day_of_week(index[1].split('_')[0])),
-            'start_hour': index[2],
-            'start_date': index[3],
-            'pickup_count': int(row)
+    for index, row in all_trips_df.iterrows():
+        db['dropoffs_' + str(size_in_meter) + '_2'].insert({
+            'start_zone': row['start_zone'],
+            'start_day': day_name_to_day_of_week(row['start_day'].split('_')[0]),
+            'zone_hour': row['start_zone'] + '_' + str(row['start_hour']),
+            'zone_hour_day': row['start_zone'] + '_' + str(row['start_hour']) + '_' + str(day_name_to_day_of_week(row['start_day'].split('_')[0])),
+            'start_hour': row['start_hour'],
+            'start_date': row['start_date'],
+            'end_zone': row['end_zone']
         })

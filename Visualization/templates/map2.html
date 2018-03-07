@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html>  
 <head>
-    <title>GridLayer Test</title>
+    <title>Bandung Trips</title>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css" />
     <style>
         body {
             padding: 0;
@@ -20,6 +21,7 @@
 
     <script src="https://unpkg.com/leaflet@1.0.1/dist/leaflet.js"></script>
     <script src="{{ url_for('static', filename='js/jquery-3.2.1.min.js') }}"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
 
     <script>
         const SIZE_IN_METER = {{ size }};
@@ -32,42 +34,211 @@
         const CITY_CENTER_LAT_LONG = [-6.9175, 107.6191];
         const ZOOM_LEVEL = 13;
 
+        // const colors = ['red', 'blue', 'green', 'purple', 'orange', 'yellow', 'pink', 'black', 'grey', 'brown']
+        var colors = [];
+
+        function randomColor () {
+            var r = Math.floor(Math.random() * 255);
+            var g = Math.floor(Math.random() * 255);
+            var b = Math.floor(Math.random() * 255);
+            return "rgb("+r+" ,"+g+","+ b+")"; 
+        }
+
         $(document).ready(function () {
+            var self = this;
+            self.markers = [];
             var map = new L.Map('map', { center: CITY_CENTER_LAT_LONG, zoom: ZOOM_LEVEL });
             L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                attribution: 'Map data &copy; <a href="http://www.osm.org">OpenStreetMap</a>'
-            }).addTo(map)
+            }).addTo(map);
 
-            $.get({
-                url: '/predict-start-finish?size=' + SIZE_IN_METER,
-                success: function (trips) {
-                    trips.forEach(function (trip) {
-                        console.log(trip)
-                        trip['route_zones'].forEach(function (zone, index, array) {
-                            var x = ((-1 * Number(zone.split('|')[0])) * LAT_LONG_DEGREE + UPPER_LEFT_LAT) + LAT_LONG_DEGREE / 2;
-                            var y = (Number(zone.split('|')[1]) * LAT_LONG_DEGREE + UPPER_LEFT_LONG) - LAT_LONG_DEGREE / 2;
+            var submitButton = L.Control.extend({
+                options: {
+                    position: 'bottomleft' 
+                },
 
-                            var upperLeftBound = [x, y];
-                            var bottomRightBound = [x - LAT_LONG_DEGREE, y + LAT_LONG_DEGREE];
+                onAdd: function (map) {
+                    var container = L.DomUtil.create('input', 'leaflet-bar leaflet-control leaflet-control-custom');
 
-                            var bounds = [upperLeftBound, bottomRightBound];
-                            var rect;
-                            if (index == 0) {
-                                rect = L.rectangle(bounds, {color: 'red', weight: 1});
-                            } else if (index == array.length - 1) {
-                                rect = L.rectangle(bounds, {color: 'green', weight: 1});
-                            } else {
-                                rect = L.rectangle(bounds, {color: 'blue', weight: 1});
-                            }
+                    container.style.backgroundColor = 'light blue';
+                    container.style.width = '100px';
+                    container.style.height = '30px';
+                    container.type = 'submit';
+                    container.value = 'Submit';
 
-                            rect.addTo(map);
-                            // rect.bindTooltip(index.toString(), {
-                            //     permanent: true, direction: 'center'
-                            // }).openTooltip();
+                    container.onclick = function () {
+                        var date = $('#date-input').val();
+                        var hour = $('#hour-input').val();
+                        var numTrip = $('#num-trip-input').val();
+
+                        for (var i = 0; i < numTrip; i++) {
+                            colors.push(randomColor());
+                        }
+
+                        map.eachLayer(function (layer) {
+                            if (layer._path != undefined)
+                                map.removeLayer(layer);
                         });
-                    });
+
+                        $.get({
+                            url: '/predict-pickups?size=' + SIZE_IN_METER + '&date=' + date + '&hour=' + hour + '&numTrip=' + numTrip,
+                            success: function (pickup_counts) {
+                                pickup_counts.forEach(function (pickup_count, index) {
+                                    var zone = pickup_count[0]
+                                    var x = ((-1 * Number(zone.split('|')[0])) * LAT_LONG_DEGREE + UPPER_LEFT_LAT) + LAT_LONG_DEGREE / 2;
+                                    var y = (Number(zone.split('|')[1]) * LAT_LONG_DEGREE + UPPER_LEFT_LONG) - LAT_LONG_DEGREE / 2;
+
+                                    var circle = L.circle([x, y], 75, {
+                                        color: colors[index],
+                                        opacity: 1,
+                                        fillColor: colors[index]
+                                    }).addTo(map);
+                                });
+
+                                pickup_zones = pickup_counts.map(function (elem) {
+                                    return elem[0];
+                                });
+
+                                $.get({
+                                    url: '/predict-dropoffs?size=' + SIZE_IN_METER + '&date=' + date + '&hour=' + hour + '&pickup_zones=' + pickup_zones.join(','),
+                                    success: function (dropoff_zones) {
+                                        dropoff_zones.forEach(function (zone, index) {
+                                            var x = ((-1 * Number(zone.split('|')[0])) * LAT_LONG_DEGREE + UPPER_LEFT_LAT) + LAT_LONG_DEGREE / 2;
+                                            var y = (Number(zone.split('|')[1]) * LAT_LONG_DEGREE + UPPER_LEFT_LONG) - LAT_LONG_DEGREE / 2;
+
+                                            var upperLeftBound = [x + LAT_LONG_DEGREE/2, y - LAT_LONG_DEGREE/2];
+                                            var bottomRightBound = [x - LAT_LONG_DEGREE/2, y + LAT_LONG_DEGREE/2];
+
+                                            var bounds = [upperLeftBound, bottomRightBound];
+                                            // var circle = L.circle([x, y], 75, {
+                                            //     color: colors[index],
+                                            //     opacity: 1
+                                            // }).addTo(map);
+                                            var rect = L.rectangle(bounds, {color: colors[index], weight: 1}).addTo(map);
+                                        });
+
+                                        $.get({
+                                            url: '/predict-routes?size=' + SIZE_IN_METER + '&date=' + date + '&hour=' + hour + '&pickup_zones=' + pickup_zones.join(',') + '&dropoff_zones=' + dropoff_zones.join(','),
+                                            success: function (routes) {
+                                                var all_routes = {
+                                                    type: 'FeatureCollection',
+                                                    features: []
+                                                };
+                                                routes.forEach(function (route, index) {
+                                                    // all_routes.features[index] = {
+                                                    //     type: 'Feature',
+                                                    //     properties: {
+                                                    //         fill: colors[index]
+                                                    //     },
+                                                    //     geometry: {
+                                                    //         type: 'LineString',
+                                                    //         coordinates: []
+                                                    //     }
+                                                    // };
+
+                                                    // x_start = ((-1 * Number(pickup_zones[index].split('|')[0])) * LAT_LONG_DEGREE + UPPER_LEFT_LAT) + LAT_LONG_DEGREE / 2;
+                                                    // y_start = (Number(pickup_zones[index].split('|')[1]) * LAT_LONG_DEGREE + UPPER_LEFT_LONG) - LAT_LONG_DEGREE / 2;
+
+                                                    // all_routes.features[index].geometry.coordinates.push([y_start, x_start]);
+
+                                                    convertedPoints = []
+                                                    route.forEach(function (zone) {
+                                                        var x = ((-1 * Number(zone.split('|')[0])) * LAT_LONG_DEGREE + UPPER_LEFT_LAT) + LAT_LONG_DEGREE / 2;
+                                                        var y = (Number(zone.split('|')[1]) * LAT_LONG_DEGREE + UPPER_LEFT_LONG) - LAT_LONG_DEGREE / 2;
+
+                                                        convertedPoints.push([x, y]);
+                                                        
+                                                        // all_routes.features[index].geometry.coordinates.push([y, x]);
+                                                    });
+
+                                                    var polyline = new L.Polyline(convertedPoints, {
+                                                      color: colors[index],
+                                                      weight: 5,
+                                                      opacity: 1
+                                                    }).addTo(map);
+
+                                                    // x_end = ((-1 * Number(dropoff_zones[index].split('|')[0])) * LAT_LONG_DEGREE + UPPER_LEFT_LAT) + LAT_LONG_DEGREE / 2;
+                                                    // y_end = (Number(dropoff_zones[index].split('|')[1]) * LAT_LONG_DEGREE + UPPER_LEFT_LONG) - LAT_LONG_DEGREE / 2;
+
+                                                    // all_routes.features[index].geometry.coordinates.push([y_end, x_end]);
+                                                });
+
+                                                // all_routes.features.forEach(function (routes) {
+                                                //     console.log(JSON.stringify(routes))
+                                                // });
+                                            }
+                                        });
+                                    }
+                                });
+                            }
+                        });
+                    }
+
+                    return container;
                 }
             });
+
+            var dateTextBox = L.Control.extend({
+                options: {
+                    position: 'bottomleft' 
+                },
+
+                onAdd: function (map) {
+                    var container = L.DomUtil.create('input', 'leaflet-bar leaflet-control leaflet-control-custom');
+                    
+                    container.id = 'date-input';
+                    container.style.backgroundColor = 'white';
+                    container.style.width = '120px';
+                    container.style.height = '30px';
+                    container.placeholder = 'Date (MM/DD/YYYY)';
+
+                    return container;
+                }
+            });
+
+            var hourBox = L.Control.extend({
+                options: {
+                    position: 'bottomleft' 
+                },
+
+                onAdd: function (map) {
+                    var container = L.DomUtil.create('input', 'leaflet-bar leaflet-control leaflet-control-custom');
+ 
+                    container.id = 'hour-input';
+                    container.style.backgroundColor = 'white';
+                    container.style.width = '60px';
+                    container.style.height = '30px';
+                    container.placeholder = 'Hour';
+
+                    return container;
+                }
+            });
+
+            var numTripBox = L.Control.extend({
+                options: {
+                    position: 'bottomleft' 
+                },
+
+                onAdd: function (map) {
+                    var container = L.DomUtil.create('input', 'leaflet-bar leaflet-control leaflet-control-custom');
+ 
+                    container.id = 'num-trip-input';
+                    container.style.backgroundColor = 'white';
+                    container.style.width = '60px';
+                    container.style.height = '30px';
+                    container.placeholder = 'Top-N trip';
+                    container.value = 10;
+
+                    return container;
+                }
+            });
+
+            map.addControl(new submitButton());
+            map.addControl(new numTripBox());
+            map.addControl(new hourBox());
+            map.addControl(new dateTextBox());
+
+            $('#date-input').datepicker();         
         });
     </script>
 </body>
